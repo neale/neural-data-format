@@ -1,5 +1,5 @@
 
-# Neural Data Format: Image compression and Retrivial with Neural Fields
+# Neural Data Format: Image Compression and Retrieval with Neural Fields
 
 <div align="center">
 <img src="https://raw.githubusercontent.com/neale/neural-canvas/main/neural_canvas/assets/montage.png" alt="logo"></img>
@@ -7,7 +7,7 @@
 
 # Overview (WIP)
 
-The neural data format .ndf is a compression algorithm that uses neural networks to compress images into a set of parameters. Images compressed into .ndf files are smaller and display fewer artifacts than other lossy compression schemes like JPEG. The neural data format is also a neural representation of the image, meaning that it is resolution agnostic. Once the .ndf is generated, we can decode the file into any arbitrary resoltuion. 
+The neural data format is a compression algorithm that uses implicit data representations i.e. neural networks to compress images into a small set of weights. Images compressed into .ndf files are smaller on disk and display fewer artifacts than other lossy compression schemes like JPEG. The neural data format is also a continuous representation, meaning that it is resolution agnostic. Once the .ndf is generated, we can decode the file into any arbitrary resoltuion. 
 
 The [neural canvas](https://github.com/neale/neural-canvas) project is used as a backend for the neural network components. 
 
@@ -25,6 +25,10 @@ Lets start with the most basic example
 
 
 ## Single image compresion
+
+## Dataset image compresion
+
+## Performance comparison with JPEG
 
 
 **Why would we want to do this?** 

@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "neural_data_format"
+version = "0.1.0"
+description = ""
+authors = ["neale <nealeratzlaff@gmail.com>"]
+readme = "README.md"
+packages = [{include = "neural_data_format"}]
+
+[tool.poetry.dependencies]
+python = ">=3.8,<3.12"
+torch = "^2.0.0"
+neural-canvas = { git = "https://github.com/neale/neural-canvas.git", branch = "main" }
+pandas = "^2.0.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -1,20 +1,27 @@
 import os
+import tqdm
 import torch
 import numpy as np
 from neural_canvas.models.inrf import INRF2D
+from neural_data_format.utils import psnr
 
 
-def compare_generated_images(x, model):
+def compare_generated_images(x, model, z, debug=False):
     import matplotlib.pyplot as plt
     c, h, w = x.shape
     gen_data = model.generate(output_shape=(h, w),
-                              sample_latent=True)[0]
-    fig, axes = plt.subplots(1, 2)
-    print (x.shape, gen_data.shape)
-    print (x.min(), x.max(), gen_data.min(), gen_data.max())
-    axes[0].imshow(np.transpose(x.cpu(), (1, 2, 0)))
-    axes[1].imshow(gen_data/255.)
-    plt.show()
+                              latents=z)[0]
+    x = np.transpose(x.cpu(), (1, 2, 0)).numpy()
+    gen_data = gen_data / 255.
+    quality = psnr(x, gen_data)
+    if debug:
+        _, axes = plt.subplots(1, 2)
+        print (x.shape, gen_data.shape, x.min(), x.max(), gen_data.min(), gen_data.max())
+        axes[0].imshow(x)
+        axes[1].imshow(gen_data)
+        plt.suptitle(f'PSNR: {quality:.4f}')
+        plt.show()
+    return quality
 
 
 def save(model, path):
@@ -28,34 +35,41 @@ def load(path, map_location='cpu'):
     return model
 
 
-def func(x, model, loss):
+def func(x, loss, model_params, debug=False):
     assert x.ndim == 3
     c, h, w = x.shape
-    _, _, loss = model.fit(target=x,
-              n_iters=100,
-              test_resolution=(h,w,c),
-              loss=loss)
-    #compare_generated_images(x, model)
 
+    model = INRF2D(device='cpu', latent_dim=64)
+    model.c_dim = c
+    model.init_map_fn(**model_params)
+    _, _, loss, latent = model.fit(
+        target=x,
+        n_iters=100,
+        test_resolution=(h,w,c),
+        loss=loss,
+        trainable_latent=True,)
+    
+    quality = compare_generated_images(x, model, latent, debug=debug)
     state = {k: v.cpu() for k, v in model.map_fn.state_dict().items()}
-    return state
+    return state, latent, quality
 
 
-def convert_torch_dataset(dataset, device, inrf, loss):
+def convert_torch_dataset(dataset, loss, model_params, device, debug=False):
     """Converts a torch.utils.data.Dataset object into a DiscreteDataset"""
-    import tqdm
-
     implicit_dataset = []
+    psnr_dataset = []
     for batch_idx, (data, labels) in enumerate(tqdm.tqdm(dataset)):
-        data = data.to(device) #* 2 - 1
-        params = [func(x, inrf, loss) for x in data]
-        ndf_data = [{'state': p, 'label': l} for p, l in zip(params, labels)]
-        implicit_dataset.extend(ndf_data)
-        inrf.init_map_weights()
-        #if batch_idx > 8:
-        #    break
+        data = data.to(device) 
+        states = [func(x, loss, model_params, debug) for x in data]
+        ndf = [s[0] for s in states]
+        latents = [s[1] for s in states]
+        quality = [s[2] for s in states]
 
-    return implicit_dataset
+        ndf_data = [{'state': t, 'label': y, 'latent': z} for t, y, z in zip(ndf, labels, latents)]
+        implicit_dataset.extend(ndf_data)
+        psnr_dataset.extend(quality)
+        #if batch_idx > 4: break
+    return implicit_dataset, torch.tensor(psnr_dataset).mean()
 
 
 class DiscreteDataset(torch.utils.data.Dataset):
@@ -81,9 +95,10 @@ class DiscreteDataset(torch.utils.data.Dataset):
         data = torch.load(self.data[idx])
         label = data['label']
         state = data['state']
+        latent = data['latent']
 
         self.inrf.map_fn.load_state_dict(state)
-        data = self.inrf.generate(output_shape=self.data_shape, sample_latent=True)[0]
+        data = self.inrf.generate(output_shape=self.data_shape, latents=latent)[0]
         data = data.transpose(2, 0, 1)  # torch CHW format
         data = data / 255.
         return data, label

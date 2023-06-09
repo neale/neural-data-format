@@ -767,7 +767,7 @@ umap-learn = "^0.5.3"
 type = "git"
 url = "https://github.com/neale/neural-canvas.git"
 reference = "main"
-resolved_reference = "4753fa6972817b30891bad2e2eec6bb692b0df16"
+resolved_reference = "c56337fc4d70471e37bd543a2d09e7fa773c1a12"
 
 [[package]]
 name = "numba"

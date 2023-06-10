@@ -25,7 +25,7 @@ train_loader_img = torch.utils.data.DataLoader(dataset_train, batch_size=4, num_
 test_loader_img = torch.utils.data.DataLoader(dataset_test, batch_size=4, num_workers=2)
 
 root_dir = 'ndf_datasets/mnist'
-loss = LossModule(l2_alpha=1.0, device='cpu')
+loss = LossModule(l2_alpha=1.0, device=device)
 model_params = {
     'graph_topology':'siren',#'conv',
     'input_encoding_dim': 1,#48,
@@ -43,7 +43,7 @@ psnr_train = convert_torch_dataset(
     model_params=model_params,
     device=device,
     save_dir=os.path.join(root_dir, 'train'),
-    debug=False)
+    debug=True)
 #
 # Create test set (NDF)
 psnr_test = convert_torch_dataset(
@@ -62,7 +62,6 @@ inrf.c_dim = 1
 inrf.init_map_fn(**model_params)
 
 batch = next(iter(train_loader_img))[0]
-inrf.init_map_fn(**inrf_params)
 
 dataset_train_ndf = DiscreteDataset(
     os.path.join(root_dir, 'train'),

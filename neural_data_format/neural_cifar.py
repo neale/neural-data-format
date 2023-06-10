@@ -42,14 +42,14 @@ model_params = {
 }
 
 # Create training set (NDF)
-"""
+
 psnr_train = convert_torch_dataset(
     train_loader_img,
     loss=loss,
     model_params=model_params,
     device=device,
     save_dir=os.path.join(root_dir, 'train'),
-    debug=False)
+    debug=True)
 
 # Create test set (NDF)
 psnr_test = convert_torch_dataset(
@@ -61,7 +61,7 @@ psnr_test = convert_torch_dataset(
     
 print (f'Mean PSNR Train: {psnr_train}')
 print (f'Mean PSNR Test: {psnr_test}')
-"""
+
 # load back data
 inrf = INRF2D(device='cpu', latent_dim=64)
 inrf.c_dim = 3

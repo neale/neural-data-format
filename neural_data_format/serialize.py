@@ -17,8 +17,12 @@ def compare_generated_images(x, model, z, debug=False):
     if debug:
         _, axes = plt.subplots(1, 2)
         print (x.shape, gen_data.shape, x.min(), x.max(), gen_data.min(), gen_data.max())
-        axes[0].imshow(x)
-        axes[1].imshow(gen_data)
+        if c == 1:
+            axes[0].imshow(x, cmap='gray')
+            axes[1].imshow(gen_data, cmap='gray')
+        else:
+            axes[0].imshow(x)
+            axes[1].imshow(gen_data)
         plt.suptitle(f'PSNR: {quality:.4f}')
         plt.show()
     return quality
@@ -38,22 +42,33 @@ def load(path, map_location='cpu'):
 def func(x, loss, model_params, device, debug=False):
     assert x.ndim == 3
     c, h, w = x.shape
-
+    device = 'cpu'
     model = INRF2D(device=device, latent_dim=64)
     model.c_dim = c
     model.init_map_fn(**model_params)
+
     _, _, loss, latent = model.fit(
         target=x,
         n_iters=100,
         test_resolution=(h,w,c),
         loss=loss,
-        trainable_latent=True,)
-    
-    quality = compare_generated_images(x, model, latent, debug=debug)
-    state = {k: v.cpu() for k, v in model.map_fn.state_dict().items()}
-    for k, v in latent.values():
+        trainable_latent=True,
+    )
+    #model.device = 'cpu'
+    #model.map_fn = model.map_fn.cpu()
+    for k, v in latent.items():
         if isinstance(v, torch.Tensor):
             latent[k] = v.cpu()
+
+    #model.map_fn = torch.quantization.quantize_dynamic(
+    #    model.map_fn,
+    #    {torch.nn.Linear},
+    #    dtype=torch.qint8
+    #)
+    print (model.map_fn)
+    quality = compare_generated_images(x, model, latent, debug=debug)
+    state = {k: v.cpu() for k, v in model.map_fn.state_dict().items()}
+
     return state, latent, quality
 
 
@@ -69,7 +84,7 @@ def convert_torch_dataset(dataset, loss, model_params, device, save_dir, debug=F
         latents = [s[1] for s in states]
         quality = [s[2] for s in states]
 
-        ndf_data = [{'state': t.cpu(), 'label': y, 'latent': z} for t, y, z in zip(ndf, labels, latents)]
+        ndf_data = [{'state': t, 'label': y, 'latent': z} for t, y, z in zip(ndf, labels, latents)]
         for data in ndf_data:
             torch.save(data, os.path.join(save_dir, f'{i}.ndf'.zfill(7)))
             i += 1

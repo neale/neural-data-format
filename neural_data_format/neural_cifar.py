@@ -11,34 +11,6 @@ from neural_data_format.models import ResNet18
 from neural_data_format.serialize import convert_torch_dataset, DiscreteDataset
 
 
-def train_classifier(train_loader, test_loader, device):
-    model = ResNet18().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-    criterion = torch.nn.CrossEntropyLoss()
-
-    for epoch in range(5):
-        for data, labels in train_loader:
-            data = data.to(device).float()
-            labels = labels.to(device).long()
-            output = model(data)
-            loss = criterion(output, labels)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            
-        print (f'[Epoch {epoch}] Train loss: {loss.item():.2f}')
-        if epoch % 2 == 0:
-            correct = 0
-            for data, labels in test_loader:
-                data = data.to(device).float()
-                labels = labels.to(device).long()
-                output = model(data)
-                loss = criterion(output, labels)
-                correct += (output.argmax(dim=1) == labels).sum().item()
-            accuracy = correct / len(test_loader.dataset)
-            print (f'[Epoch {epoch}] Test_acc: {(accuracy*100):.4f}') 
-
-
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 dataset_train = torchvision.datasets.CIFAR10(
     root='./tmp',
@@ -54,9 +26,9 @@ dataset_test = torchvision.datasets.CIFAR10(
 train_loader_img = torch.utils.data.DataLoader(dataset_train, batch_size=32, num_workers=2)
 test_loader_img = torch.utils.data.DataLoader(dataset_test, batch_size=32, num_workers=2)
 
-root_dir = 'ndf_datasets/mnist'
+root_dir = 'ndf_datasets/cifar10'
 
-loss = LossModule(l2_alpha=1.0, device='cpu')
+loss = LossModule(l2_alpha=1.0, device=device)#'cpu')
 
 model_params = {
     'graph_topology':'siren',#'conv',
@@ -68,54 +40,69 @@ model_params = {
     'final_activation': 'sigmoid',
     'num_fourier_freqs': None,#24
 }
+
 # Create training set (NDF)
-dataset_train_ndf = convert_torch_dataset(
+"""
+psnr_train = convert_torch_dataset(
     train_loader_img,
     loss=loss,
     model_params=model_params,
     device=device,
-    debug=True)
-
-os.makedirs(os.path.join(root_dir, 'train'), exist_ok=True)
-for i, data in enumerate(dataset_train_ndf):
-    torch.save(data, os.path.join(root_dir, 'train', f'{i}.ndf'.zfill(7)))
+    save_dir=os.path.join(root_dir, 'train'),
+    debug=False)
 
 # Create test set (NDF)
-dataset_test_ndf = convert_torch_dataset(
+psnr_test = convert_torch_dataset(
     test_loader_img,
     loss=loss,
     model_params=model_params,
+    save_dir=os.path.join(root_dir, 'test'),
     device=device)
-
-os.makedirs(os.path.join(root_dir, 'test'), exist_ok=True)
-for i, data in enumerate(dataset_test_ndf):
-    torch.save(data, os.path.join(root_dir, 'test', f'{i}.ndf'.zfill(7)))
     
+print (f'Mean PSNR Train: {psnr_train}')
+print (f'Mean PSNR Test: {psnr_test}')
+"""
 # load back data
-inrf = INRF2D(device='cpu', latent_dim=128)
-inrf.c_dim = 1
+inrf = INRF2D(device='cpu', latent_dim=64)
+inrf.c_dim = 3
 inrf.init_map_fn(**model_params)
-
 batch = next(iter(train_loader_img))[0]
-#inrf.init_map_fn(**inrf_params)
 
+transforms_train = torchvision.transforms.Compose([
+    torchvision.transforms.ToTensor(),
+    torchvision.transforms.Normalize((0.4914, 0.4822, 0.4465),
+                                     (0.2023, 0.1994, 0.2010)),
+])
+transforms_test = torchvision.transforms.Compose([
+    torchvision.transforms.ToTensor(),
+    torchvision.transforms.Normalize((0.4914, 0.4822, 0.4465),
+                                     (0.2023, 0.1994, 0.2010)),
+])
 dataset_train_ndf = DiscreteDataset(
     os.path.join(root_dir, 'train'),
     inrf,
-    data_shape=batch.shape[2:])
-train_loader_ndf = torch.utils.data.DataLoader(dataset_train_ndf, batch_size=64, num_workers=0)
+    data_shape=batch.shape[2:],
+    transforms=transforms_train,)
+train_loader_ndf = torch.utils.data.DataLoader(dataset_train_ndf,
+                                               batch_size=64,
+                                               num_workers=0,
+                                               shuffle=True)
 
 dataset_test_ndf = DiscreteDataset(
     os.path.join(root_dir, 'test'),
     inrf,
-    data_shape=batch.shape[2:])
-test_loader_ndf = torch.utils.data.DataLoader(dataset_test_ndf, batch_size=64, num_workers=2)
+    data_shape=batch.shape[2:],
+    transforms=transforms_test,)
+test_loader_ndf = torch.utils.data.DataLoader(dataset_test_ndf,
+                                              batch_size=64,
+                                              num_workers=8,
+                                              shuffle=False)
 
 model = ResNet18().to(device)
 print ('Training classifier on NDF data')
-train_classifier(train_loader_ndf, test_loader_ndf, device=device)
+train_classifier(model, train_loader_ndf, test_loader_ndf, device=device)
 print ('Training classifier on original data')
-train_classifier(train_loader_img, test_loader_img, device=device)
+train_classifier(model, train_loader_img, test_loader_img, device=device)
 
 
 

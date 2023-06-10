@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-import torch
 
 from neural_canvas.models import INRF2D
 from neural_canvas.utils import load_image_as_tensor
@@ -17,11 +16,11 @@ for i, width in enumerate([4, 8, 16, 32]):
                       conv_feature_map_size=width,
                       graph_topology='conv', 
                       final_activation='tanh') # better params for fitting
-    _, _, loss = model.fit(img, n_iters=5000)  # returns a implicit neural representation of the image
+    _, _, loss = model.fit(img, n_iters=10000)  # returns a implicit neural representation of the image
     gen_img = model.generate(output_shape=(256, 256),sample_latent=True) # generate image from the implicit neural representation
     print (model)
     print (f'NDF size: {model.size}')  # return size of neural representation
-    print (f'NDF loss: {loss}, L2 Error: {torch.nn.functional.mse_loss(img, gen_img[0]):.2f}')
+    print (f'NDF loss: {loss}, L2 Error: {np.linalg.norm((img.reshape(*gen_img.shape) - gen_img).abs())}')
     # >> 30083
     print ('image size', np.prod(img.shape))
     # >> 196608

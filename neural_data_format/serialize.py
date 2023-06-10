@@ -35,11 +35,11 @@ def load(path, map_location='cpu'):
     return model
 
 
-def func(x, loss, model_params, debug=False):
+def func(x, loss, model_params, device, debug=False):
     assert x.ndim == 3
     c, h, w = x.shape
 
-    model = INRF2D(device='cpu', latent_dim=64)
+    model = INRF2D(device=device, latent_dim=64)
     model.c_dim = c
     model.init_map_fn(**model_params)
     _, _, loss, latent = model.fit(
@@ -51,25 +51,31 @@ def func(x, loss, model_params, debug=False):
     
     quality = compare_generated_images(x, model, latent, debug=debug)
     state = {k: v.cpu() for k, v in model.map_fn.state_dict().items()}
+    for k, v in latent.values():
+        if isinstance(v, torch.Tensor):
+            latent[k] = v.cpu()
     return state, latent, quality
 
 
-def convert_torch_dataset(dataset, loss, model_params, device, debug=False):
+def convert_torch_dataset(dataset, loss, model_params, device, save_dir, debug=False):
     """Converts a torch.utils.data.Dataset object into a DiscreteDataset"""
-    implicit_dataset = []
+    os.makedirs(save_dir, exist_ok=True)
     psnr_dataset = []
+    i = 0
     for batch_idx, (data, labels) in enumerate(tqdm.tqdm(dataset)):
         data = data.to(device) 
-        states = [func(x, loss, model_params, debug) for x in data]
+        states = [func(x, loss, model_params, device, debug) for x in data]
         ndf = [s[0] for s in states]
         latents = [s[1] for s in states]
         quality = [s[2] for s in states]
 
-        ndf_data = [{'state': t, 'label': y, 'latent': z} for t, y, z in zip(ndf, labels, latents)]
-        implicit_dataset.extend(ndf_data)
+        ndf_data = [{'state': t.cpu(), 'label': y, 'latent': z} for t, y, z in zip(ndf, labels, latents)]
+        for data in ndf_data:
+            torch.save(data, os.path.join(save_dir, f'{i}.ndf'.zfill(7)))
+            i += 1
         psnr_dataset.extend(quality)
         #if batch_idx > 4: break
-    return implicit_dataset, torch.tensor(psnr_dataset).mean()
+    return torch.tensor(psnr_dataset).mean()
 
 
 class DiscreteDataset(torch.utils.data.Dataset):
@@ -81,7 +87,7 @@ class DiscreteDataset(torch.utils.data.Dataset):
             inrf (INRF2D): the INRF2D model that we will use to generate the data
             data_shape (tuple): the shape of the data that we will generate
     """
-    def __init__(self, root_dir, inrf, data_shape):
+    def __init__(self, root_dir, inrf, data_shape, transforms=None):
         self.root_dir = root_dir
         self.data = []
         for root, dirs, files in os.walk(root_dir):
@@ -90,16 +96,18 @@ class DiscreteDataset(torch.utils.data.Dataset):
                     self.data.append(os.path.join(root, file))
         self.inrf = inrf
         self.data_shape = data_shape
+        self.transforms = transforms
 
     def __getitem__(self, idx):
         data = torch.load(self.data[idx])
         label = data['label']
         state = data['state']
         latent = data['latent']
-
+        #breakpoint()
         self.inrf.map_fn.load_state_dict(state)
         data = self.inrf.generate(output_shape=self.data_shape, latents=latent)[0]
-        data = data.transpose(2, 0, 1)  # torch CHW format
+        if self.transforms is not None:
+            data = self.transforms(data)
         data = data / 255.
         return data, label
     

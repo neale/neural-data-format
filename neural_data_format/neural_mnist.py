@@ -21,8 +21,8 @@ dataset_test = torchvision.datasets.MNIST(root='./tmp',
                                         download=True,
                                         transform=torchvision.transforms.ToTensor())
 
-train_loader_img = torch.utils.data.DataLoader(dataset_train, batch_size=128, num_workers=2)
-test_loader_img = torch.utils.data.DataLoader(dataset_test, batch_size=128, num_workers=2)
+train_loader_img = torch.utils.data.DataLoader(dataset_train, batch_size=4, num_workers=2)
+test_loader_img = torch.utils.data.DataLoader(dataset_test, batch_size=4, num_workers=2)
 
 root_dir = 'ndf_datasets/mnist'
 loss = LossModule(l2_alpha=1.0, device='cpu')
@@ -37,24 +37,32 @@ model_params = {
     'num_fourier_freqs': None,#24
 }
 # Create training set (NDF)
-dataset_train_ndf = convert_torch_dataset(train_loader_img, loss=loss, model_params=model_params, device=device)
-os.makedirs(os.path.join(root_dir, 'train'), exist_ok=True)
-for i, data in enumerate(dataset_train_ndf):
-    torch.save(data, os.path.join(root_dir, 'train', f'{i}.ndf'.zfill(7)))
-
+psnr_train = convert_torch_dataset(
+    train_loader_img,
+    loss=loss,
+    model_params=model_params,
+    device=device,
+    save_dir=os.path.join(root_dir, 'train'),
+    debug=False)
+#
 # Create test set (NDF)
-dataset_test_ndf = convert_torch_dataset(test_loader_img, loss=loss, model_params=model_params, device=device)
-os.makedirs(os.path.join(root_dir, 'test'), exist_ok=True)
-for i, data in enumerate(dataset_test_ndf):
-    torch.save(data, os.path.join(root_dir, 'test', f'{i}.ndf'.zfill(7)))
+psnr_test = convert_torch_dataset(
+    test_loader_img,
+    loss=loss,
+    model_params=model_params,
+    save_dir=os.path.join(root_dir, 'test'),
+    device=device)
+    
+print (f'Mean PSNR Train: {psnr_train}')
+print (f'Mean PSNR Test: {psnr_test}')
     
 # load back data
-inrf = INRF2D(device='cpu', latent_dim=128)
+inrf = INRF2D(device='cpu', latent_dim=64)
 inrf.c_dim = 1
 inrf.init_map_fn(**model_params)
 
 batch = next(iter(train_loader_img))[0]
-#inrf.init_map_fn(**inrf_params)
+inrf.init_map_fn(**inrf_params)
 
 dataset_train_ndf = DiscreteDataset(
     os.path.join(root_dir, 'train'),
@@ -71,10 +79,6 @@ test_loader_ndf = torch.utils.data.DataLoader(dataset_test_ndf, batch_size=64, n
 model = LeNet().to(device)
 
 print ('Training classifier on NDF data')
-train_classifier(train_loader_ndf, test_loader_ndf, device=device)
+train_classifier(model, train_loader_ndf, test_loader_ndf, device=device)
 print ('Training classifier on original data')
-train_classifier(train_loader_img, test_loader_img, device=device)
-
-
-
-
+train_classifier(model, train_loader_img, test_loader_img, device=device)

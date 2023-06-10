@@ -19,17 +19,7 @@ Just clone and pip install
 
 `pip install .`
 
-Lets start with the most basic example
-
-## Quickstart
-
-
-## Single image compresion
-
-## Dataset image compresion
-
-## Performance comparison with JPEG
-
+## Single image compression
 
 **Why would we want to do this?** 
 
@@ -63,6 +53,48 @@ img_super_res = model.generate(output_shape=(1024,1024), sample_latent=True)
 print ('super res size', img_super_res.shape)
 # >> (1, 1024, 1024, 3)
 ```
+## Dataset image compresion
+
+We can compress datasets and store each image as a `.ndf` file. `.ndf` files can be loaded with the `neural_data_format.DiscreteDataset` class. 
+
+### Performance on the MNIST dataset
+
+Convert the MNIST dataset to NDF with `python neural_data_format/neural_mnist.py`.
+
+Train a LeNet classifier for on the NDF data, and compare with the performance of the same classifier trained on the original images.
+
+Training setup:
+* LeNet
+* Adam optimizer (lr=1e-3)
+* Cross entropy
+* 5 epochs
+
+| Dataset | Train Loss | Test Accuracy | PSNR   |
+|---------|------------|---------------|--------|
+| Image   | 0.00       | 97.58         | --     |
+| NDF     | 0.03       | 97.91         | 46.144 |
+
+Download the NDF dataset: [Google Drive Link]()
+
+### Performance on the CIFAR10 dataset
+
+ResNet18 clasifier trained for 100 epochs on the NDF data compared to training with the same setup on the original images.
+
+Training setup:
+* ResNet18
+* Cosine Annealing
+* Adam optimizer (lr=1e-3)
+* Cross entropy
+* 100 epochs
+
+| Dataset | Train Loss | Test Accuracy | PSNR   |
+|---------|------------|---------------|--------|
+| Image   | 0.00       | 86.39         | --     |
+| NDF     | 0.00       | 86.34         | 41.688 |
+
+## Performance comparison with JPEG
+
+
 
 ## Contributions
 

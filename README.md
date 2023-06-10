@@ -21,6 +21,10 @@ Just clone and pip install
 
 ## Single image compression
 
+<div align="center">
+<img src="https://raw.githubusercontent.com/neale/neural-data-format/main/neural_data_format/assets/psnr.png" alt="logo"></img>
+</div>
+
 **Why would we want to do this?** 
 
 Implicit data representations are cheap! There are less parameters in the neural networks used to represent the 2D and 3D data, than there are pixels or voxels in the data itself. 

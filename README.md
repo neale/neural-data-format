@@ -2,7 +2,7 @@
 # Neural Data Format: Image Compression and Retrieval with Neural Fields
 
 <div align="center">
-<img src="https://raw.githubusercontent.com/neale/neural-canvas/main/neural_canvas/assets/montage.png" alt="logo"></img>
+<img src="https://raw.githubusercontent.com/neale/neural-data-format/main/neural_data_format/assets/ndf_banner.png" alt="logo"></img>
 </div>
 
 # Overview (WIP)
@@ -68,15 +68,17 @@ Training setup:
 * Adam optimizer (lr=1e-3)
 * Cross entropy
 * 5 epochs
+* No data augmentation
 
 | Dataset | Train Loss | Test Accuracy | PSNR   |
 |---------|------------|---------------|--------|
 | Image   | 0.00       | 97.58         | --     |
 | NDF     | 0.03       | 97.91         | 46.144 |
 
-Download the NDF dataset: [Google Drive Link]()
 
 ### Performance on the CIFAR10 dataset
+
+Convert the CIFAR10 dataset to NDF with `python neural_data_format/neural_cifar.py`.
 
 ResNet18 clasifier trained for 100 epochs on the NDF data compared to training with the same setup on the original images.
 
@@ -86,16 +88,13 @@ Training setup:
 * Adam optimizer (lr=1e-3)
 * Cross entropy
 * 100 epochs
+* No data augmentation
+
 
 | Dataset | Train Loss | Test Accuracy | PSNR   |
 |---------|------------|---------------|--------|
 | Image   | 0.00       | 86.39         | --     |
 | NDF     | 0.00       | 86.34         | 41.688 |
-
-Download the NDF dataset: [Google Drive Link]()
-
-## Performance comparison with JPEG
-
 
 
 ## Contributions

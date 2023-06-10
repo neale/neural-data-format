@@ -92,6 +92,8 @@ Training setup:
 | Image   | 0.00       | 86.39         | --     |
 | NDF     | 0.00       | 86.34         | 41.688 |
 
+Download the NDF dataset: [Google Drive Link]()
+
 ## Performance comparison with JPEG
 
 
